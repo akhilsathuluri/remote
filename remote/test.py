@@ -2,6 +2,7 @@ import streamlit as st
 
 # from remote.dashboard import dashboard
 from dashboard import dashboard
+from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 
 class Node(dashboard.Dashboard):
     def __init__(self):
@@ -16,5 +17,17 @@ class Node(dashboard.Dashboard):
         st.header('Accessed at: '+ str(self.time_stamp))
         st.header('Connection status: '+str(self.connection))
 
-current = Node()
-current.initiate()
+
+    # def log_data()
+
+node = Node()
+node.initiate()
+node.connect()
+map = node.load_register_map()
+
+# while node.connection_status:
+#     rq = node.client.read_holding_registers(map['Registers'][0], 2, unit = node.unit)
+#     st.header(str(rq.registers))
+
+# while self.connection_status:
+#     rq = client.read_holding_registers()

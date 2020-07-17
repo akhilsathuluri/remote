@@ -14,9 +14,7 @@ class Dashboard(comm.Comm):
     def __init__(self):
         comm.Comm.__init__(self)
         self.time_stamp = datetime.now()
-        self.logger_status = False
+        # self.logger_status = False
 
-    def logger(self):
+    # def access_logger(self):
         # self.logger_status = True
-        self.map = self.load_register_map()
-        

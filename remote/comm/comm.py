@@ -20,8 +20,8 @@ class Comm:
         print('---'*5)
 
     def connect(self):
-        client = ModbusClient(self.host_ip, port=self.host_port)
-        self.connection = client.connect()
+        self.client = ModbusClient(self.host_ip, port=self.host_port)
+        self.connection = self.client.connect()
         if self.connection == False:
                 raise AssertionError("Failed to connect with the host, ip = {}, port = {}"\
                 .format(self.host_ip, self.host_port))
@@ -33,10 +33,10 @@ class Comm:
         # Map the registers for function here in a dict
         # Access any function of the machine using this dict
         # Example switch on 'bulb', then corresponding reg is written 1
-        register_map = 'mapping.xlsx'
-        assert os.path.isfile(register_map), \
-        "The mapping data should be present in {},\n in .xlsx file format"\
-        .format(os.getcwd())
+        register_map = 'comm\mapping.xlsx'
+        # assert os.path.isfile(register_map), \
+        # "The mapping data should be present in {},\n in .xlsx file format"\
+        # .format(.)
         map = pd.read_excel(register_map)
         print('---'*5)
         print('Loaded register map successfully')

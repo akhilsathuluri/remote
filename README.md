@@ -22,3 +22,5 @@ To Do:
 1. Provide access to register mapping via dashboard
 2. Provide control of read/write via dashboard
 3. Provide testing and assertion of different cases
+4. Change register map from excel to json or other accessible format
+  or simply a pd dataframe
