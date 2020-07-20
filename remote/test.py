@@ -2,32 +2,40 @@ import streamlit as st
 
 # from remote.dashboard import dashboard
 from dashboard import dashboard
+from node import node
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
+import time
+import json
 
-class Node(dashboard.Dashboard):
-    def __init__(self):
-        self.node_description = 'Pad printing machine for Husqvarna rim printing'
-        self.node_number = 'N1_1507'
-        self.node_name = 'Pad printing machine'
-        dashboard.Dashboard.__init__(self)
-
-    def initiate(self):
-        st.title("{}: {}".format(self.node_number, self.node_name))
-        st.header(self.node_description)
-        st.header('Accessed at: '+ str(self.time_stamp))
-        st.header('Connection status: '+str(self.connection))
-
-
-    # def log_data()
-
-node = Node()
+node = node.Node()
 node.initiate()
+
+node.host_ip = '127.0.0.1'
+node.host_port = '502'
+
 node.connect()
 map = node.load_register_map()
 
-# while node.connection_status:
-#     rq = node.client.read_holding_registers(map['Registers'][0], 2, unit = node.unit)
-#     st.header(str(rq.registers))
+node.logging_status = True
 
-# while self.connection_status:
-#     rq = client.read_holding_registers()
+st.header('Connection status: '+str(node.connection_status))
+st.header('Logging status: {}'.format(node.logging_status))
+
+# log = open('log.json', 'a')
+comp = {}
+val = {}
+while node.logging_status:
+    # Reads every 1 second
+    for r in map['Registers']:
+        rq = node.client.read_holding_registers(r, 1, unit = node.unit)
+        # message = map['Components'][r-1]+' : '+str(rq.registers[0])
+        comp = map['Components'][r-1]
+        # message['Name'] = 'Bla'
+        val = rq.registers[0]
+        with open('log.json', "a") as log:
+            json.dump([comp, val], log)
+    time.sleep(1)
+
+
+
+node.client.close()
