@@ -26,6 +26,9 @@ To Do:
 5. Node.display data features using streamlit interface these fuctions
 6. Should be within the dashboard class and need to be inherited to node
 7. Start and stop logging interfaced with buttons, but how? threading?
+8. Correct logging format and access via json
+9. Create a requirements file
+10. Install them in Rpi and test working
 
 
 Non-priority:
@@ -33,3 +36,18 @@ Non-priority:
   or simply a pd dataframe
   Most people are familiar and have access to excel and hence not a big problem
   Can be removed once the register map access is given via dashboard
+
+
+Utils/Common?
+1. Generate heartbeat pulse (input: register)
+2. Create a standard for heartbeat pulse
+
+Parameters to be set for a new setup
+1. node_name
+2. node_number
+3. node_description
+4. log_frequency
+5. host_ip
+6. host_port
+7. register_map.xlsx in 'comm\mapping.xlsx'
+8. Initiate log file called 'log.json'
