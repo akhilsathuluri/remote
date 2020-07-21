@@ -7,3 +7,8 @@ def check_model(register_model):
         return False, identified_model
     else:
         return 'ERROR', 0
+
+def check_orientation():
+    # Do the orientation checking with camera here
+    check = True
+    return check
