@@ -29,13 +29,16 @@ To Do:
 8. Correct logging format and access via json
 9. Create a requirements file
 10. Install them in Rpi and test working
+11. Handle connection lost from PLC side
+Once the connection is lost Pi cannot write anything to the PLC so some check needs to be there for this some register toggling type (Heartbeat check type)
 
 
 Non-priority:
-4. Change register map from excel to json or other accessible format
+1. Change register map from excel to json or other accessible format
   or simply a pd dataframe
   Most people are familiar and have access to excel and hence not a big problem
   Can be removed once the register map access is given via dashboard
+2. Add SIGTERM to kill all processes
 
 
 Utils/Common?
@@ -51,8 +54,3 @@ Parameters to be set for a new setup
 6. host_port
 7. register_map.xlsx in 'comm\mapping.xlsx'
 8. Initiate log file called 'log.json'
-
-
-Debug
-1. To test/debug interfacing code, use Modslave simulator from, https://www.modbustools.com/download.html
-2. An example file for pad printing machine is given in remote\bin folder
