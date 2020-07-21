@@ -51,3 +51,8 @@ Parameters to be set for a new setup
 6. host_port
 7. register_map.xlsx in 'comm\mapping.xlsx'
 8. Initiate log file called 'log.json'
+
+
+Debug
+1. To test/debug interfacing code, use Modslave simulator from, https://www.modbustools.com/download.html
+2. An example file for pad printing machine is given in remote\bin folder
