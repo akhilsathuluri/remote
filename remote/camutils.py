@@ -1,3 +1,5 @@
+import cv2
+
 def check_model(register_model):
     # Do template matching and decide resulting identified model as a number
     identified_model = 3
