@@ -17,7 +17,7 @@ class Node(comm.Comm):
         # Time in seconds
         self.log_frequency = 1
 
-    def initiate(self):
+    def init_page(self):
         st.title("{}: {}".format(self.node_number, self.node_name))
         st.header(self.node_description)
         st.header('Accessed at: '+ str(self.time_stamp))

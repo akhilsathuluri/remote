@@ -4,16 +4,36 @@ from camutils import *
 import multiprocessing as mp
 import signal
 
-def health(node):
+# Instantiate node
+node = node.Node()
+# Set node params
+node.node_description = 'Pad printing machine for Husqvarna rim printing'
+node.node_number = 'N1_1507'
+node.node_name = 'Pad printing machine'
+
+node.host_ip = '127.0.0.1'
+node.host_port = '502'
+# Load register map
+map = node.load_register_map()
+# Connect with slave
+node.connect()
+# Initialise node_page
+node.init_page()
+# Reset the entire memory block under pi's control
+start_register = 50
+block_length = 15
+rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
+
+def cycle():
     while True:
+        # Check interruption
+        if interrupted:
+            print("Exit command received")
+            break
+        # Write loop_number for diagnostics
         loop_number = 0
         rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-        # Read write health bits
-        heartbeat_read = node.client.read_holding_registers(map['reg_plc_health'], 1, unit=node.unit)
-        heartbeat_write = node.client.write_registers(map['reg_pi_health'], heartbeat_read.registers[0], unit=node.unit)
-        # Read write ready to trigger bits
-        trigger_read = node.client.read_holding_registers(map['reg_plc_ready_to_trigger'], 1, unit=node.unit)
-        trigger_write = node.client.write_registers(map['reg_pi_ready_for_trigger'], trigger_read.registers[0], unit=node.unit)
+
         # Check if PLC is reset in between
         reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
         if reset.registers[0] == 1:
@@ -21,19 +41,6 @@ def health(node):
             rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
         else:
             pass
-
-def cycle(node):
-    while True:
-        loop_number = 1
-        rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-
-        # # Check if PLC is reset in between
-        # reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
-        # if reset.registers[0] == 1:
-        #     # Reset entire memory block data
-        #     rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-        # else:
-        #     pass
 
         # Search for trigger
         trigger1 = node.client.read_holding_registers(map['reg_plc_trigger1'], 1, unit=node.unit)
@@ -44,7 +51,7 @@ def cycle(node):
         # Trigger 1 only after component seat check is verified (handled by PLC)
         # Start cycle
         if trigger1.registers[0] == 1:
-            loop_number = 2
+            loop_number = 1
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Read PLC model register
             plc_model = node.client.read_holding_registers(map['reg_plc_model'], 1, unit=node.unit)
@@ -70,7 +77,7 @@ def cycle(node):
 
         # Trigger 2 only after component seat check is verified (handled by PLC)
         if trigger2.registers[0] == 1:
-            loop_number = 3
+            loop_number = 2
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Check orientation of the rim
             ret = check_orientation()
@@ -84,37 +91,13 @@ def cycle(node):
             else:
                 rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
 
-def publish(node):
-    """
-    Transferance of data from main and health loop to this loop
-    Publish data to the main streamlit page
-    """
-    pass
+# Handling exit signal
+def signal_handler(signal, frame):
+    global interrupted
+    interrupted = True
 
-if __name__ == "__main__":
-    # Instantiate node
-    node = node.Node()
-    # Set node params
-    node.node_description = 'Pad printing machine for Husqvarna rim printing'
-    node.node_number = 'N1_1507'
-    node.node_name = 'Pad printing machine'
-
-    node.host_ip = '127.0.0.1'
-    node.host_port = '502'
-    # Load register map
-    map = node.load_register_map()
-    # Connect with slave
-    node.connect()
-    # Reset the entire memory block under pi's control
-    start_register = 50
-    block_length = 15
-    rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-    # Initialise node_page
-    # node.init_page()
-    p1 = mp.Process(target = health, args = (node, ))
-    p2 = mp.Process(target = cycle, args = (node, ))
-    p3 = mp.Process(target = publish, args = (node, ))
-
-    p1.start()
-    p2.start()
-    p3.start()
+if __name__ == '__main__':
+    # Signal
+    signal.signal(signal.SIGINT, signal_handler)
+    interrupted = False
+    cycle()
