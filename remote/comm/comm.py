@@ -47,4 +47,5 @@ class Comm:
         print('---'*5)
         print('Loaded register map successfully')
         print('---'*5)
+        # self.map = map
         return map
