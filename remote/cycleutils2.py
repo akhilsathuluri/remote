@@ -1,3 +1,4 @@
+import pandas as pd
 # from node import node
 
 # Need to cache both the functions
@@ -5,6 +6,7 @@
 # @st.cache
 def health(node, map):
     while True:
+        print('health')
         loop_number = 0
         rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
         # Read write health bits
@@ -24,6 +26,7 @@ def health(node, map):
 # @st.cache(hash_funcs={node.Node: True})
 def cycle(node, map):
     while True:
+        print('cycle')
         loop_number = 1
         rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
 
@@ -72,3 +75,13 @@ def cycle(node, map):
                 rq = node.client.write_registers(map['reg_pi_error'], 1, unit=node.unit)
             else:
                 rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
+
+def write_to_db(node, map, engine):
+    temp = map.copy()
+    temp = pd.DataFrame([temp], columns=temp.keys())
+    while True:
+        print('to_db')
+        for reg in map:
+            temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
+            temp[reg] = temp_reg.registers[0]
+        temp.to_sql('register_data', con=engine, if_exists='append')

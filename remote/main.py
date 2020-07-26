@@ -25,8 +25,6 @@ def create_node(node):
     map = node.load_register_map()
     # Connect with slave
     node.connect()
-    # Initialise page
-    node.init_page()
     # Reset the entire memory block under pi's control
     start_register = 50
     block_length = 15
@@ -41,30 +39,41 @@ def publish(node, map, temp, engine):
         temp[reg] = temp_reg.registers[0]
     temp.to_sql('register_data', con=engine, if_exists='append')
 
-def display(node, map, temp, engine):
+def display(node, engine):
+    # Initialise page
+    node.init_page()
+    show_data = st.empty()
     while True:
-        publish(node, map, temp, engine)
+        # publish(node, map, temp, engine)
         df = pd.read_sql('register_data', con=engine)
         show_data.dataframe(df)
 
-if __name__=="__main__":
-    node, map = create_node(node)
-    # Connect to db
-    engine = create_engine('sqlite:///database/register_data.db', echo=False)
-    temp = map.copy()
-    temp = pd.DataFrame([temp], columns=temp.keys())
-
-    show_data = st.empty()
-
+def main_funcs(node, map, engine):
     t1 = threading.Thread(target=health, args=(node,map, ))
     t2 = threading.Thread(target=cycle, args=(node,map, ))
-    t3 = threading.Thread(target=display, args=(node,map,temp,engine,))
+    t3 = threading.Thread(target=write_to_db, args=(node,map,engine ))
 
     t1.start()
     t2.start()
-    add_report_ctx(t3)
     t3.start()
 
     t1.join()
     t2.join()
     t3.join()
+
+if __name__=="__main__":
+    node, map = create_node(node)
+    # Connect to db
+    engine = create_engine('sqlite:///database/register_data.db', echo=False)
+
+    p = mp.Process(target=main_funcs, args=(node, map, engine, ))
+    p.start()
+
+    time.sleep(1)
+
+    t3 = threading.Thread(target=display, args=(node, engine,))
+    add_report_ctx(t3)
+    t3.start()
+
+    t3.join()
+    p.join()
