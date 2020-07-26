@@ -1,4 +1,4 @@
-import cv2
+#import cv2
 
 def check_model(register_model):
     # Do template matching and decide resulting identified model as a number
