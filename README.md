@@ -19,26 +19,18 @@ Usage:
 8. Access all the data through the dashboard
 
 To Do:
-1. Provide access to register mapping via dashboard
-2. Provide control of read/write via dashboard
-3. Provide testing and assertion of different cases
-4. Start and stop logging should be in this class
-5. Node.display data features using streamlit interface these fuctions
-6. Should be within the dashboard class and need to be inherited to node
-7. Start and stop logging interfaced with buttons, but how? threading?
-8. Correct logging format and access via json
+1. Provide testing and assertion of different cases
+2. Stopping the log does not stop the child processes and causes
+the RPi to overload itself. Use signals if needed and commit to proper
+exit of code
+3. Extract features from data logging code and make them part of the node class
+4. Sidebar selection for plotting required register
 
 Non-priority:
 1. Change register map from excel to json or other accessible format
   or simply a pd dataframe
   Most people are familiar and have access to excel and hence not a big problem
   Can be removed once the register map access is given via dashboard
-2. Add SIGTERM to kill all processes
-
-
-Utils/Common?
-1. Generate heartbeat pulse (input: register)
-2. Create a standard for heartbeat pulse
 
 Parameters to be set for a new setup
 1. node_name
@@ -53,6 +45,7 @@ Parameters to be set for a new setup
 
 For testing in linux systems:
 1. Use the following free simulator: https://www.modbusdriver.com/diagslave.html
+2. Go to its dir and use sudo linux_x86-64/diagslave -m tcp to simulate slave
 
 node@11507
 node"11507
