@@ -18,8 +18,8 @@ def create_node(node):
     node.node_number = 'N1_1507'
     node.node_name = 'Pad printing machine'
 
-#    node.host_ip = '127.0.0.1'
-    node.host_ip = '192.168.0.109'
+    node.host_ip = '127.0.0.1'
+    #node.host_ip = '192.168.0.109'
     node.host_port = '502'
 
     # Load register map
@@ -33,21 +33,15 @@ def create_node(node):
 
     return node, map
 
-def publish(node, map, temp, engine):
-    # Read data from all the tagged registers
-    for reg in map:
-        temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
-        temp[reg] = temp_reg.registers[0]
-    temp.to_sql('register_data', con=engine, if_exists='append')
-
 def display(node, engine):
     # Initialise page
     node.init_page()
     show_data = st.empty()
     while True:
-        # publish(node, map, temp, engine)
-        df = pd.read_sql('register_data', con=engine)
-        show_data.dataframe(df)
+        query = "SELECT * FROM register_data ORDER BY time_stamp DESC LIMIT 50"
+        df = pd.read_sql(query, con=engine)
+        # show_data.dataframe(df)
+        show_data.line_chart(df[["reg_plc_health"]])
 
 def main_funcs(node, map, engine):
     t1 = threading.Thread(target=health, args=(node,map, ))

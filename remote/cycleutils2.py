@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import datetime
 # from node import node
 
 # Need to cache both the functions
@@ -12,6 +13,9 @@ def health(node, map):
         # Read write health bits
         heartbeat_read = node.client.read_holding_registers(map['reg_plc_health'], 1, unit=node.unit)
         heartbeat_write = node.client.write_registers(map['reg_pi_health'], heartbeat_read.registers[0], unit=node.unit)
+
+        print(heartbeat_read.registers[0])
+
         # Read write ready to trigger bits
         trigger_read = node.client.read_holding_registers(map['reg_plc_ready_to_trigger'], 1, unit=node.unit)
         trigger_write = node.client.write_registers(map['reg_pi_ready_for_trigger'], trigger_read.registers[0], unit=node.unit)
@@ -78,10 +82,12 @@ def cycle(node, map):
 
 def write_to_db(node, map, engine):
     temp = map.copy()
+    temp['time_stamp'] = datetime.now()
     temp = pd.DataFrame([temp], columns=temp.keys())
     while True:
         print('to_db')
         for reg in map:
             temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
             temp[reg] = temp_reg.registers[0]
+        temp['time_stamp'] = datetime.now()
         temp.to_sql('register_data', con=engine, if_exists='append')
