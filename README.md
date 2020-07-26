@@ -27,11 +27,6 @@ To Do:
 6. Should be within the dashboard class and need to be inherited to node
 7. Start and stop logging interfaced with buttons, but how? threading?
 8. Correct logging format and access via json
-9. Create a requirements file
-10. Install them in Rpi and test working
-11. Handle connection lost from PLC side
-Once the connection is lost Pi cannot write anything to the PLC so some check needs to be there for this some register toggling type (Heartbeat check type)
-
 
 Non-priority:
 1. Change register map from excel to json or other accessible format
@@ -54,7 +49,10 @@ Parameters to be set for a new setup
 6. host_port
 7. register_map.xlsx in 'comm\mapping.xlsx'
 8. Initiate log file called 'log.json'
+9. Database location and name
 
+For testing in linux systems:
+1. Use the following free simulator: https://www.modbusdriver.com/diagslave.html
 
 node@11507
 node"11507
