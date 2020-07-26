@@ -18,7 +18,8 @@ def create_node(node):
     node.node_number = 'N1_1507'
     node.node_name = 'Pad printing machine'
 
-    node.host_ip = '127.0.0.1'
+#    node.host_ip = '127.0.0.1'
+    node.host_ip = '192.168.0.109'
     node.host_port = '502'
 
     # Load register map
