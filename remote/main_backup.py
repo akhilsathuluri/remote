@@ -1,116 +1,70 @@
 import pandas as pd
 from node import node
 from camutils import *
-import multiprocessing as mp
-import signal
+from cycleutils2 import *
 import streamlit as st
 from datetime import datetime
+from streamlit.ReportThread import add_report_ctx
+import time
+from sqlalchemy import create_engine
+import threading
+import multiprocessing as mp
 
-# Instantiate node
-node = node.Node()
-# Set node params
-node.node_description = 'Pad printing machine for Husqvarna rim printing'
-node.node_number = 'N1_1507'
-node.node_name = 'Pad printing machine'
+def create_node(node):
+    # Instantiate node
+    node = node.Node()
+    # Set node params
+    node.node_description = 'Pad printing machine for Husqvarna rims'
+    node.node_number = 'N1_1507'
+    node.node_name = 'Pad printing machine'
 
-node.host_ip = '127.0.0.1'
-node.host_port = '502'
-# Load register map
-map = node.load_register_map()
-# Connect with slave
-node.connect()
-# Reset the entire memory block under pi's control
-start_register = 50
-block_length = 15
-rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-# Initialise node_page
-node.init_page()
-# Get tag data from data
-# global chart, data
-data = map.copy()
-# Clean values corresponding to all tags
-for a in data:
-    data[a] = 0
+    node.host_ip = '127.0.0.1'
+    node.host_port = '502'
 
-data = pd.DataFrame([data], columns=data.keys())
-data['time_stamp'] = datetime.now()
-temp = data.copy()
+    # Load register map
+    map = node.load_register_map()
+    # Connect with slave
+    node.connect()
+    # Initialise page
+    node.init_page()
+    # Reset the entire memory block under pi's control
+    start_register = 50
+    block_length = 15
+    rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
 
-chart = st.empty()
-lchart = st.empty()
+    return node, map
 
-def publish():
-    global chart, data
+def publish(node, map, temp, engine):
     # Read data from all the tagged registers
     for reg in map:
         temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
         temp[reg] = temp_reg.registers[0]
+    temp.to_sql('register_data', con=engine, if_exists='append')
 
-    # Write frame to screen
-    chart.dataframe(temp.transpose())
-    data = data.append(temp)
-    # lchart.line_chart((data[['time_stamp', 'reg_plc_health']]).values)
-    lchart.line_chart((data[['reg_pi_last_loop']]).values)
+def display(node, map, temp, engine):
+    while True:
+        publish(node, map, temp, engine)
+        df = pd.read_sql('register_data', con=engine)
+        show_data.dataframe(df)
 
-while True:
-    loop_number = 1
-    rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
+if __name__=="__main__":
+    node, map = create_node(node)
+    # Connect to db
+    engine = create_engine('sqlite:///database/register_data.db', echo=False)
+    temp = map.copy()
+    temp = pd.DataFrame([temp], columns=temp.keys())
 
-    # Check if PLC is reset in between
-    reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
-    if reset.registers[0] == 1:
-        # Reset entire memory block data
-        rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-    else:
-        pass
+    show_data = st.empty()
 
-    # Search for trigger
-    trigger1 = node.client.read_holding_registers(map['reg_plc_trigger1'], 1, unit=node.unit)
-    trigger2 = node.client.read_holding_registers(map['reg_plc_trigger2'], 1, unit=node.unit)
-    # Handle not being able to read register (AssertionError already exists)
-    # print('Waiting for trigger')
+    t1 = threading.Thread(target=health, args=(node,map, ))
+    t2 = threading.Thread(target=cycle, args=(node,map, ))
+    t3 = threading.Thread(target=display, args=(node,map,temp,engine,))
 
-    # Trigger 1 only after component seat check is verified (handled by PLC)
-    # Start cycle
-    if trigger1.registers[0] == 1:
-        loop_number = 2
-        rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-        # Read PLC model register
-        plc_model = node.client.read_holding_registers(map['reg_plc_model'], 1, unit=node.unit)
-        # Check models
-        ret, identified_model = check_model(plc_model.registers[0])
-        # Handle not being able to write register
-        if ret == True:
-            # Write model verify register
-            rq = node.client.write_registers(map['reg_pi_model_ok'], 1, unit=node.unit)
-            # Write model number register
-            reg_name = 'reg_pi_model_'+str(identified_model)
-            rq = node.client.write_registers(map[reg_name], 1, unit=node.unit)
-        elif ret == False:
-            rq = node.client.write_registers(map['reg_pi_model_nok'], 1, unit=node.unit)
-            reg_name = 'reg_pi_model_'+str(identified_model)
-            rq = node.client.write_registers(map[reg_name], 1, unit=node.unit)
-        elif ret == 'ERROR':
-            # To handle camera prediction errors
-            rq = node.client.write_registers(map['reg_pi_error'], 1, unit=node.unit)
-        else:
-            # To handle unknown read/write or pi errors
-            rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
+    t1.start()
+    t2.start()
+    add_report_ctx(t3)
+    t3.start()
 
-    # Trigger 2 only after component seat check is verified (handled by PLC)
-    if trigger2.registers[0] == 1:
-        loop_number = 3
-        rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-        # Check orientation of the rim
-        ret = check_orientation()
-        # Handle not being able to write register
-        if ret == True:
-            rq = node.client.write_registers(map['reg_pi_ori_ok'], 1, unit=node.unit)
-        elif ret == False:
-            rq = node.client.write_registers(map['reg_pi_ori_nok'], 1, unit=node.unit)
-        elif ret == 'ERROR':
-            rq = node.client.write_registers(map['reg_pi_error'], 1, unit=node.unit)
-        else:
-            rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
-
-    publish()
+    t1.join()
+    t2.join()
+    t3.join()

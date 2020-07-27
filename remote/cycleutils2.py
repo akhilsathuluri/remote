@@ -1,24 +1,24 @@
 import pandas as pd
-from node import node
-from camutils import *
-import multiprocessing as mp
-import sys
+from datetime import datetime
+# from node import node
 
-# Only if windows
-if sys.platform == 'win32':
-    mp.set_start_method('spawn')
+# Need to cache both the functions
 
-def cycle(node):
-    # Reset the entire memory block under pi's control
-    start_register = 50
-    block_length = 15
-    rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-
+# @st.cache
+def health(node, map):
     while True:
-        # Write loop_number for diagnostics
+        print('health')
         loop_number = 0
         rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
+        # Read write health bits
+        heartbeat_read = node.client.read_holding_registers(map['reg_plc_health'], 1, unit=node.unit)
+        heartbeat_write = node.client.write_registers(map['reg_pi_health'], heartbeat_read.registers[0], unit=node.unit)
 
+        print(heartbeat_read.registers[0])
+
+        # Read write ready to trigger bits
+        trigger_read = node.client.read_holding_registers(map['reg_plc_ready_to_trigger'], 1, unit=node.unit)
+        trigger_write = node.client.write_registers(map['reg_pi_ready_for_trigger'], trigger_read.registers[0], unit=node.unit)
         # Check if PLC is reset in between
         reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
         if reset.registers[0] == 1:
@@ -27,16 +27,20 @@ def cycle(node):
         else:
             pass
 
-        # Search for trigger
+# @st.cache(hash_funcs={node.Node: True})
+def cycle(node, map):
+    while True:
+        print('cycle')
+        loop_number = 1
+        rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
+
         trigger1 = node.client.read_holding_registers(map['reg_plc_trigger1'], 1, unit=node.unit)
         trigger2 = node.client.read_holding_registers(map['reg_plc_trigger2'], 1, unit=node.unit)
-        # Handle not being able to read register (AssertionError already exists)
-        print('Waiting for trigger')
 
         # Trigger 1 only after component seat check is verified (handled by PLC)
         # Start cycle
         if trigger1.registers[0] == 1:
-            loop_number = 1
+            loop_number = 2
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Read PLC model register
             plc_model = node.client.read_holding_registers(map['reg_plc_model'], 1, unit=node.unit)
@@ -62,7 +66,7 @@ def cycle(node):
 
         # Trigger 2 only after component seat check is verified (handled by PLC)
         if trigger2.registers[0] == 1:
-            loop_number = 2
+            loop_number = 3
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Check orientation of the rim
             ret = check_orientation()
@@ -76,25 +80,14 @@ def cycle(node):
             else:
                 rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
 
-# def viewer(node):
-
-
-if __name__ == "__main__":
-    # Initialise system
-    node = node.Node()
-    # Set node params
-    node.node_description = 'Pad printing machine for Husqvarna rim printing'
-    node.node_number = 'N1_1507'
-    node.node_name = 'Pad printing machine'
-
-    node.host_ip = '127.0.0.1'
-    node.host_port = '502'
-    # Load register map
-    map = node.load_register_map()
-    # Connect with slave
-    node.connect()
-
-    cycle_p = mp.Process(target = cycle, args = (node, ))
-    # viewer_p = mp.Process(target = viewer())
-
-    cycle_p.start()
+def write_to_db(node, map, engine):
+    temp = map.copy()
+    temp['time_stamp'] = datetime.now()
+    temp = pd.DataFrame([temp], columns=temp.keys())
+    while True:
+        print('to_db')
+        for reg in map:
+            temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
+            temp[reg] = temp_reg.registers[0]
+        temp['time_stamp'] = datetime.now()
+        temp.to_sql('register_data', con=engine, if_exists='append')

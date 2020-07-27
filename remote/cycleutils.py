@@ -1,61 +1,19 @@
-import pandas as pd
-from node import node
-from camutils import *
-import multiprocessing as mp
-import signal
-import streamlit as st
-from datetime import datetime
+# import streamlit as st
+# from node import node
 
-# Instantiate node
-node = node.Node()
-# Set node params
-node.node_description = 'Pad printing machine for Husqvarna rim printing'
-node.node_number = 'N1_1507'
-node.node_name = 'Pad printing machine'
+# Need to cache both the functions
 
-node.host_ip = '127.0.0.1'
-node.host_port = '502'
-# Load register map
-map = node.load_register_map()
-# Connect with slave
-node.connect()
-# Reset the entire memory block under pi's control
-start_register = 50
-block_length = 15
-rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-# Initialise node_page
-node.init_page()
-# Get tag data from data
-# global chart, data
-data = map.copy()
-# Clean values corresponding to all tags
-for a in data:
-    data[a] = 0
-
-data = pd.DataFrame([data], columns=data.keys())
-data['time_stamp'] = datetime.now()
-temp = data.copy()
-
-chart = st.empty()
-lchart = st.empty()
-
-def publish():
-    global chart, data
-    # Read data from all the tagged registers
-    for reg in map:
-        temp_reg = node.client.read_holding_registers(map[reg], 1, unit=node.unit)
-        temp[reg] = temp_reg.registers[0]
-
-    # Write frame to screen
-    chart.dataframe(temp.transpose())
-    data = data.append(temp)
-    # lchart.line_chart((data[['time_stamp', 'reg_plc_health']]).values)
-    lchart.line_chart((data[['reg_pi_last_loop']]).values)
-
-while True:
-    loop_number = 1
+# @st.cache
+def health(node, map):
+    # while True:
+    loop_number = 0
     rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-
+    # Read write health bits
+    heartbeat_read = node.client.read_holding_registers(map['reg_plc_health'], 1, unit=node.unit)
+    heartbeat_write = node.client.write_registers(map['reg_pi_health'], heartbeat_read.registers[0], unit=node.unit)
+    # Read write ready to trigger bits
+    trigger_read = node.client.read_holding_registers(map['reg_plc_ready_to_trigger'], 1, unit=node.unit)
+    trigger_write = node.client.write_registers(map['reg_pi_ready_for_trigger'], trigger_read.registers[0], unit=node.unit)
     # Check if PLC is reset in between
     reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
     if reset.registers[0] == 1:
@@ -64,11 +22,14 @@ while True:
     else:
         pass
 
-    # Search for trigger
+# @st.cache(hash_funcs={node.Node: True})
+def cycle(node, map):
+    # while True:
+    loop_number = 1
+    rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
+
     trigger1 = node.client.read_holding_registers(map['reg_plc_trigger1'], 1, unit=node.unit)
     trigger2 = node.client.read_holding_registers(map['reg_plc_trigger2'], 1, unit=node.unit)
-    # Handle not being able to read register (AssertionError already exists)
-    # print('Waiting for trigger')
 
     # Trigger 1 only after component seat check is verified (handled by PLC)
     # Start cycle
@@ -112,5 +73,3 @@ while True:
             rq = node.client.write_registers(map['reg_pi_error'], 1, unit=node.unit)
         else:
             rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
-
-    publish()
