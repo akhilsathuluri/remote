@@ -1,49 +1,16 @@
-import pandas as pd
-from node import node
-from camutils import *
-import multiprocessing as mp
-import signal
+import streamlit as st
 
-# Instantiate node
-node = node.Node()
-# Set node params
-node.node_description = 'Pad printing machine for Husqvarna rim printing'
-node.node_number = 'N1_1507'
-node.node_name = 'Pad printing machine'
-
-node.host_ip = '127.0.0.1'
-node.host_port = '502'
-# Load register map
-map = node.load_register_map()
-# Connect with slave
-node.connect()
-# Reset the entire memory block under pi's control
-start_register = 50
-block_length = 15
-rq = node.client.write_registers(start_register, [0]*block_length, unit=node.unit)
-
-# Initialise node_page
-node.init_page()
-
-# Handling exit signal
-# def signal_handler(signal, frame):
-#     global interrupted
-#     interrupted = True
-
-# Signal
-# signal.signal(signal.SIGINT, signal_handler)
-# interrupted = False
-
-def cycle():
+@st.cache
+def health(node, map):
     while True:
-        # Check interruption
-        # if interrupted:
-        #     print("Exit command received")
-        #     break
-        # Write loop_number for diagnostics
         loop_number = 0
         rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
-
+        # Read write health bits
+        heartbeat_read = node.client.read_holding_registers(map['reg_plc_health'], 1, unit=node.unit)
+        heartbeat_write = node.client.write_registers(map['reg_pi_health'], heartbeat_read.registers[0], unit=node.unit)
+        # Read write ready to trigger bits
+        trigger_read = node.client.read_holding_registers(map['reg_plc_ready_to_trigger'], 1, unit=node.unit)
+        trigger_write = node.client.write_registers(map['reg_pi_ready_for_trigger'], trigger_read.registers[0], unit=node.unit)
         # Check if PLC is reset in between
         reset = node.client.read_holding_registers(map['reg_plc_reset'], 1, unit=node.unit)
         if reset.registers[0] == 1:
@@ -52,16 +19,19 @@ def cycle():
         else:
             pass
 
-        # Search for trigger
+@st.cache
+def cycle(node, map):
+    while True:
+        loop_number = 1
+        rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
+
         trigger1 = node.client.read_holding_registers(map['reg_plc_trigger1'], 1, unit=node.unit)
         trigger2 = node.client.read_holding_registers(map['reg_plc_trigger2'], 1, unit=node.unit)
-        # Handle not being able to read register (AssertionError already exists)
-        print('Waiting for trigger')
 
         # Trigger 1 only after component seat check is verified (handled by PLC)
         # Start cycle
         if trigger1.registers[0] == 1:
-            loop_number = 1
+            loop_number = 2
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Read PLC model register
             plc_model = node.client.read_holding_registers(map['reg_plc_model'], 1, unit=node.unit)
@@ -87,7 +57,7 @@ def cycle():
 
         # Trigger 2 only after component seat check is verified (handled by PLC)
         if trigger2.registers[0] == 1:
-            loop_number = 2
+            loop_number = 3
             rq = node.client.write_registers(map['reg_pi_last_loop'], loop_number, unit=node.unit)
             # Check orientation of the rim
             ret = check_orientation()
@@ -100,8 +70,3 @@ def cycle():
                 rq = node.client.write_registers(map['reg_pi_error'], 1, unit=node.unit)
             else:
                 rq = node.client.write_registers(map['reg_pi_unknown_error'], 1, unit=node.unit)
-
-cycle()
-
-
-# if __name__ == '__main__':

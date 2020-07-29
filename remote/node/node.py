@@ -2,6 +2,7 @@ import streamlit as st
 import json
 from datetime import datetime
 import time
+from sqlalchemy import create_engine
 
 from comm import comm
 
@@ -20,12 +21,6 @@ class Node(comm.Comm):
     def init_page(self):
         st.title("{}: {}".format(self.node_number, self.node_name))
         st.header(self.node_description)
-        st.header('Accessed on: '+ str(self.time_stamp))
-        # st.header('Connection status: '+str(self.connection_status))
-        # st.header('Logging status: {}'.format(self.logging_status))
+        st.write('Accessed on: '+ str(self.time_stamp))
 
-    # def start_logging(log_frequency):
-    #     self.logging_status = True
-    #     st.header('Logging status: {}'.format(self.logging_status))
-        # Instead of initiating the log file every time. Load one from the memory
-        # so that we dont rewrite it every time we restart it
+    # Add function to connect to db and save data

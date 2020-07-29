@@ -19,7 +19,7 @@ class Comm:
         print('---'*5)
         print('Supports only Modbus TCP/IP for now')
         print('---'*5)
-
+        
     def connect(self):
         self.client = ModbusClient(self.host_ip, port=self.host_port)
         self.connection_status = self.client.connect()
@@ -31,10 +31,10 @@ class Comm:
         print('---'*5)
 
     def load_register_map(self):
-        register_map = 'comm\mapping.xlsx'
+        register_map = 'comm/mapping.xlsx'
         assert os.path.isfile(register_map), \
         "The mapping data should be present in {},\n in .xlsx file format"\
-        .format('.\comm\mapping.xlsx')
+        .format('./comm/mapping.xlsx')
         df = pd.read_excel(register_map)
         # Access map only and convert to dict
         data = df[['Register_tag', 'Modbus Address']]
