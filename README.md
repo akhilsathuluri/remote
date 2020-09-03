@@ -2,6 +2,7 @@
 The remote package is a machine information gathering and broacasting software based on Modbus TCP/IP communication protocol. It relies on the Streamlit library to gather and relay information form any supporting PLC to the internet. This IoT provides a platform to add more functionality based on the machine and user requirements. Any user within the secure network of the machine will be able to both read and write to the PLC enabling not only remote diagnostics but also remote monitoring and control.
 
 ## Package name: Remote
+Can be changed
 
 ## Description:
 1. This package provides Modbus TCP/IP communication interfaces
